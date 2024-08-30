@@ -2,6 +2,8 @@
 
 This repository contains a compiler for the PLX language, an extension of the PL language, implemented using JFlex and CUP. The PLX language is similar to C and requires prior declaration of variables, unlike its predecessor PL. This project includes lexical analysis, syntax analysis, and intermediate code generation, maintaining the same compilation scheme and intermediate code format as the original PL language.
 
+![Alt text](https://res.cloudinary.com/practicaldev/image/fetch/s--EBWw95iw--/c_limit%2Cf_auto%2Cfl_progressive%2Cq_auto%2Cw_880/https://cdn-images-1.medium.com/max/552/1%2AFxPEreHwpiRs_PbzaXBBFQ.png)
+
 ## Table of Contents
 
 - [Introduction](#introduction)
