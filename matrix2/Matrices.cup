@@ -1,0 +1,113 @@
+import java_cup.runtime.*;
+import java.lang.String;
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Arrays;
+
+parser code {:
+
+    public void syntax_error(Symbol cur_token) {
+    }
+
+    public void unrecovered_syntax_error(Symbol cur_token) {
+        System.err.println("Syntax error:");
+        // report_error("Syntax error",null);
+        done_parsing();
+    }
+:}
+
+action code {:
+
+:}
+
+
+/* Terminales*/
+terminal ALL,CLL,AP,CP,AC,CC,COMA,PYC,ASIG,MAS,MENOS,MENOSUNARIO,POR,DIV,CONCATENA;
+terminal String INVERSA,TRANSPUESTA,ADJUNTA,PRINT;
+terminal double[][] MATRIZ;
+terminal double[] VECTOR;
+terminal String IDENT;
+terminal Double NUMERO;
+/* No terminales */
+non terminal listaExp,linea,exp;
+non terminal double[] vect;
+non terminal ArrayList<Double> contentVector;
+non terminal double[][] mat;
+non terminal ArrayList<ArrayList<Double>> contentMatriz;
+/* Precedencia */
+precedence left MAS,MENOS;
+precedence left POR,DIV;
+precedence left CONCATENA;
+precedence left AP,CP;
+precedence left MENOSUNARIO;
+/* Gramatica */
+listaExp ::= listaExp linea
+        | linea
+        ;
+
+linea ::= exp PYC
+        | PYC
+        ;
+
+exp ::= IDENT:i ASIG vect:v                                 {: TablaSimbolos.insertarVector(i,v); :}
+    | IDENT:i ASIG mat:m                                    {: TablaSimbolos.insertar(i,m); :}
+    | IDENT:i AP NUMERO:n1 COMA NUMERO:n2 CP ASIG mat:m     {: TablaSimbolos.insertar(i,Matrices.completar(m,n1.intValue(),n2.intValue())); :}
+    | PRINT AP vect:v CP                                    {: Matrices.print(v); :}
+    | PRINT AP mat:m CP                                     {: Matrices.print(m); :}
+    ;
+
+vect ::= ALL contentVector:cV CLL               {: RESULT = Matrices.toVector(cV); :}
+        | NUMERO:n MAS vect:v                   {: RESULT = Matrices.suma(n,v); :}
+        | vect:v MAS NUMERO:n                   {: RESULT = Matrices.suma(n,v); :}
+        | vect:v1 MAS vect:v2                   {: RESULT = Matrices.suma(v1,v2); :}
+        | vect:v MENOS NUMERO:n                 {: RESULT = Matrices.suma(-n,v); :}
+        | NUMERO:n POR vect:v                   {: RESULT = Matrices.producto(n,v); :}
+        | vect:v POR NUMERO:n                   {: RESULT = Matrices.producto(n,v); :}
+        | vect:v DIV NUMERO:n                   {: RESULT = Matrices.producto(1/n,v); :}
+        | NUMERO:n CONCATENA vect:v             {: RESULT = Matrices.concatena(n,v); :}
+        | vect:v CONCATENA NUMERO:n             {: RESULT = Matrices.concatena(n,v); :}
+        | vect:v1 CONCATENA vect:v2             {: RESULT = Matrices.concatena(v1,v2); :}
+        | ALL CLL                               {: RESULT = new double[0]; :}
+        | VECTOR:vV                             {: RESULT = vV; :}
+        | VECTOR:vV AP NUMERO:n CP              {: RESULT = Matrices.subVector(vV,n.intValue()); :}
+        ;
+
+contentVector ::= NUMERO:n                          {: RESULT = new ArrayList<>(); RESULT.add(n); :}
+                | MENOS NUMERO:n                    {: RESULT = new ArrayList<>(); RESULT.add(-n); :} %prec MENOSUNARIO
+                | NUMERO:n {: RESULT = new ArrayList<>(); RESULT.add(n); :} COMA contentVector:c    {: RESULT.addAll(c); :}
+                | MENOS NUMERO:n {: RESULT = new ArrayList<>(); RESULT.add(-n); :} COMA contentVector:c    {: RESULT.addAll(c); :} %prec MENOSUNARIO
+                ;
+
+mat ::= ALL contentMatriz:cM CLL                    {: RESULT = Matrices.toArray(cM); :}
+    | NUMERO:n MAS mat:m                            {: RESULT = Matrices.suma(n,m); :}                
+    | mat:m MAS NUMERO:n                            {: RESULT = Matrices.suma(n,m); :} 
+    | mat:m1 MAS mat:m2                             {: RESULT = Matrices.suma(m1,m2); :} 
+    | mat:m MENOS NUMERO:n                          {: RESULT = Matrices.suma(-n,m); :}
+    | mat:m1 MENOS mat:m2                           {: RESULT = Matrices.suma(m1,Matrices.producto(-1,m2)); :}
+    | NUMERO:n POR mat:m                            {: RESULT = Matrices.producto(n,m); :}
+    | mat:m POR NUMERO:n                            {: RESULT = Matrices.producto(n,m); :}
+    | vect:v1 POR vect:v2                           {: RESULT = Matrices.producto(v1,v2); :}
+    | vect:v POR mat:m                              {: RESULT = Matrices.producto(v,m); :}
+    | mat:m POR vect:v                              {: RESULT = Matrices.producto(m,v); :}
+    | mat:m1 POR mat:m2                             {: RESULT = Matrices.producto(m1,m2); :}
+    | mat:m DIV NUMERO:n                            {: RESULT = Matrices.producto(1/n,m); :}
+    | mat:m1 DIV mat:m2                             {: RESULT = Matrices.producto(m1,Matrices.inversa(m2)); :}
+    | mat:m CONCATENA vect:v                        {: RESULT = Matrices.concatena(m,v); :}
+    | MATRIZ:mM                                     {: RESULT = mM; :}
+    | MATRIZ:mM AP NUMERO:n1 COMA NUMERO:n2 CP      
+        {:
+            if (n1 > mM.length) {
+                System.out.print(Matrices.ERROR_FILAS_INSUF);
+                System.exit(0);
+            } else if (n2 > mM[0].length) {
+                System.out.print(Matrices.ERROR_COLUM_INSUF);
+                System.exit(0);
+            } else {
+                RESULT = Matrices.subMatriz(mM,n1.intValue(),n2.intValue());
+            }
+        :}
+    ;
+
+contentMatriz ::= vect:v           {: RESULT = new ArrayList<>(); RESULT.add(Matrices.toArrayList(v)); :}
+                | vect:v {: RESULT = new ArrayList<>(); RESULT.add(Matrices.toArrayList(v)); :} COMA contentMatriz:c {: RESULT.addAll(c); :}
+                ;

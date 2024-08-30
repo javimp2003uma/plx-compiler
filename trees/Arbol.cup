@@ -1,0 +1,85 @@
+import java_cup.runtime.*;
+import java.lang.String;
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Arrays;
+
+parser code {:
+
+    public void syntax_error(Symbol cur_token) {
+    }
+
+    public void unrecovered_syntax_error(Symbol cur_token) {
+        System.err.println("Syntax error:");
+        // report_error("Syntax error",null);
+        done_parsing();
+    }
+:}
+
+action code {:
+    Arbol aTotal = new Arbol();
+
+    public Arbol arbolUnitario (Integer n) {
+        Arbol a = new Arbol();
+        a.raiz = n;
+        a.maximo = n;
+        a.profundidad = 1;
+        a.elementos = 1;
+        a.sumaNivel = new Integer[1];
+        a.sumaNivel[0] = n;
+        a.arbolInverso = n.toString();
+        a.grafo = "";
+        return a;
+    }
+
+    public Arbol fusionarArboles (Arbol a1, Arbol a2, Integer n) {
+        Arbol result = new Arbol();
+        result.raiz = n;
+        result.maximo = Math.max(a1.maximo,Math.max(a2.maximo,n));
+        result.elementos = a1.elementos + a2.elementos + 1;
+        result.profundidad = Math.max(a1.profundidad,a2.profundidad) + 1;
+        result.sumaNivel = new Integer[Arbol.MAXNIVEL];
+        for (int i = 0; i < result.profundidad; i++) {
+
+            int sumaNivelActual = 0;
+
+            if (i == 0) {
+                sumaNivelActual = n;
+            } else {
+                sumaNivelActual = a1.sumaNivel[i-1] + a2.sumaNivel[i-1];
+            }
+
+            // Almacenar la suma calculada para este nivel en el arreglo correspondiente
+            result.sumaNivel[i] = sumaNivelActual;
+        }
+
+        result.arbolInverso = "{" + a2.arbolInverso + "," + n.toString() + "," + a1.arbolInverso + "}";
+        result.grafo = "";
+        if (a1.grafo != "") {
+            result.grafo += a1.grafo;
+            //result.grafo += "; ";
+        }
+        result.grafo += n.toString() + " -> {" + a1.raiz + "," + a2.raiz + "}; ";
+        if (a2.grafo != "") {
+            result.grafo += a2.grafo;
+            //result.grafo += "; ";
+        }
+    
+        return result;
+    }
+:}
+
+
+/* Terminales*/
+terminal ALL,CLL,COMA;
+terminal Integer NUMERO;
+/* No terminales */
+non terminal linea;
+non terminal Arbol arbol;
+/* Precedencia */
+/* Gramatica */
+linea ::= arbol:a           {: aTotal = a; System.out.print(aTotal); :}
+        ;
+arbol ::= NUMERO:n                                          {: RESULT = arbolUnitario(n); :}                           
+        | ALL arbol:a1 COMA NUMERO:n COMA arbol:a2 CLL      {: RESULT = fusionarArboles(a1,a2,n); :}
+        ;

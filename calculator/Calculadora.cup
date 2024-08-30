@@ -1,0 +1,42 @@
+import java_cup.runtime.*;
+import java.lang.String;
+import java.util.HashMap;
+
+parser code {:
+    public void syntax_error(Symbol cur_token) {
+    }
+
+    public void unrecovered_syntax_error(Symbol cur_token) {
+        System.err.println("Syntax error:");
+        // report_error("Syntax error",null);
+        done_parsing();
+    }
+:}
+
+/* Terminales */
+terminal MAS,MENOS,MULT,DIVIDE,AP,CP,PYC,MENOSUNARIO;
+terminal Integer NUMERO;
+/* No terminales */
+non terminal listaExp,linea;
+non terminal Integer exp;
+/* Precedencia */
+precedence left MAS,MENOS; // se pone en la misma linea pq da igual
+precedence left MULT,DIVIDE;
+precedence left MENOSUNARIO; // contra mas abajo, mayor prioridad
+/* Gramatica */
+listaExp ::= listaExp linea
+         | linea
+         ;
+
+linea ::= exp:e PYC   {: System.out.println(e); :}
+        | PYC
+        ;
+
+exp ::= exp:v1 MAS exp:v2   {: RESULT = Integer.valueOf(v1.intValue() + v2.intValue()); :}
+        | exp:v1 MENOS exp:v2 {: RESULT = Integer.valueOf(v1.intValue() - v2.intValue()); :}
+        | exp:v1 MULT exp:v2 {: RESULT = Integer.valueOf(v1.intValue() * v2.intValue()); :}
+        | exp:v1 DIVIDE exp:v2 {: RESULT = Integer.valueOf(v1.intValue() / v2.intValue()); :}
+        | MENOS exp:v1 {: RESULT = Integer.valueOf(0 - v1.intValue()); :} %prec MENOSUNARIO
+        | AP exp:v CP {: RESULT = v; :}
+        | NUMERO:v  {: RESULT = v; :}
+        ;

@@ -1,0 +1,228 @@
+import java_cup.runtime.*;
+import java.lang.String;
+import java.util.HashMap;
+import java.util.ArrayList;
+
+parser code {:
+
+    public void syntax_error(Symbol cur_token) {
+    }
+
+    public void unrecovered_syntax_error(Symbol cur_token) {
+        System.err.println("Syntax error:");
+        // report_error("Syntax error",null);
+        done_parsing();
+    }
+:}
+
+/* Terminales */
+terminal ALL,CLL,AC,CC,AP,CP,COMA,PYC,ASIG,MAS,MENOS,POR,DIV,MENOSUNARIO;
+terminal String INVERSA,TRANSPUESTA,ADJUNTA,PRINT,IDENT;
+terminal Double NUMERO;
+/* No terminales */
+non terminal listaExp,linea,exp;
+non terminal ArrayList<ArrayList<Double>> consec;
+non terminal ArrayList<ArrayList<Double>> operando;
+non terminal ArrayList<ArrayList<Double>> interior;
+non terminal ArrayList<ArrayList<Double>> interiorJava;
+non terminal ArrayList<Double> fila;
+/* Precedencia */
+precedence left MAS,MENOS; // se pone en la misma linea pq da igual
+precedence left POR,DIV;
+precedence left MENOSUNARIO; // contra mas abajo, mayor prioridad
+/* Gramatica */
+listaExp ::= listaExp linea
+         | linea
+         ;
+
+linea ::= exp PYC
+        | PYC
+        ;
+
+exp ::= IDENT:id ASIG consec:c       {: TablaSimbolos.insertar(id,Matrices.toArray(c)); :}
+    | PRINT AP consec:c CP        
+        {:
+            if (c != null) {
+                Matrices.print(c); // ESTA ES LA CLAVE DEL EJERCICIO, YA QUE SI DURANTE LA EJECUCION SE HAN LANZADO ERRORES ENTONCES NO SE ASIGNAN LOS RESULTADOS A LOS ARRAYLIST Y POR TANTO SI NO COMPROBARMOS SI ES NULL NOS LANZA UNA NULLPOINTEREXCEPTION
+            }
+        :}
+    ;
+
+consec ::= consec:c1 MAS consec:c2
+            {:
+                double [][] aux1 = Matrices.toArray(c1);
+                double [][] aux2 = Matrices.toArray(c2);
+                if (Matrices.filas(aux1) != Matrices.filas(aux2) || Matrices.columnas(aux1) != Matrices.columnas(aux2)) {
+                    System.out.println(Matrices.ERROR_SUMA);
+                } else {
+                    RESULT = Matrices.toArrayList(Matrices.suma(aux1,aux2)); 
+                }
+            :}
+        | consec:c1 MENOS consec:c2
+            {:
+                double [][] aux1 = Matrices.toArray(c1);
+                double [][] aux21 = Matrices.toArray(c2);
+                double [][] aux22 = Matrices.producto(-1,aux21);
+                if (Matrices.filas(aux1) != Matrices.filas(aux22) || Matrices.columnas(aux1) != Matrices.columnas(aux22)) {
+                    System.out.println(Matrices.ERROR_SUMA);
+                } else {
+                    RESULT = Matrices.toArrayList(Matrices.suma(aux1,aux22)); 
+                }
+            :}
+        | consec:c1 POR consec:c2
+            {:
+                double [][] aux1 = Matrices.toArray(c1);
+                double [][] aux2 = Matrices.toArray(c2);
+                if (Matrices.columnas(aux1) != Matrices.filas(aux2)) {
+                    System.out.println(Matrices.ERROR_PROD);
+                } else {
+                    RESULT = Matrices.toArrayList(Matrices.producto(aux1,aux2));
+                }     
+            :}
+        | consec:c1 DIV consec:c2
+            {:
+                double [][] aux1 = Matrices.toArray(c1);
+                double [][] aux2 = Matrices.toArray(c2);
+                if (Matrices.filas(aux2) != Matrices.columnas(aux2) || Matrices.determinante(aux2) == 0) {
+                    System.out.println(Matrices.ERROR_INVERSA);
+                } else {
+                    double [][] auxx2 = Matrices.inversa(aux2);
+                    if (Matrices.columnas(aux1) != Matrices.filas(auxx2)) {
+                        System.out.println(Matrices.ERROR_PROD);
+                    } else {
+                        RESULT = Matrices.toArrayList(Matrices.producto(aux1,auxx2));
+                    }
+                }
+            :}
+        | AP consec:c CP    {: RESULT = c; :}
+        | operando:o    {: RESULT = o; :}
+        | MENOS operando:o {: RESULT = Matrices.toArrayList(Matrices.producto(-1,Matrices.toArray(o))); :} %prec MENOSUNARIO
+        ;
+
+operando ::= AC interior:i CC     
+                {:
+                    boolean vale = true;
+                    int dim = i.get(0).size();
+                    for (int j = 1; j < i.size() && vale; j++) {
+                        if (i.get(j).size() != dim) {
+                            vale = false;
+                        }
+                    }
+
+                    if (vale) {
+                        RESULT = i;
+                    } else {
+                        System.out.println(Matrices.ERROR_FILAS);
+                    }
+                :}
+          | ALL interiorJava:iJ CLL    
+                {:
+                    boolean vale = true;
+                    int dim = iJ.get(0).size();
+                    for (int j = 1; j < iJ.size() && vale; j++) {
+                        if (iJ.get(j).size() != dim) {
+                            vale = false;
+                        }
+                    }
+
+                    if (vale) {
+                        RESULT = iJ;
+                    } else {
+                        System.out.println(Matrices.ERROR_FILAS);
+                    }
+                :}
+          | INVERSA AP consec:c CP
+                {:
+                    double [][] aux1 = Matrices.toArray(c);
+                    if (Matrices.filas(aux1) != Matrices.columnas(aux1) || Matrices.determinante(aux1) == 0) {
+                        System.out.println(Matrices.ERROR_INVERSA);
+                    } else {
+                        RESULT = Matrices.toArrayList(Matrices.inversa(aux1));
+                    }
+                :}
+          | TRANSPUESTA AP consec:c CP      {: RESULT = Matrices.toArrayList(Matrices.transpuesta(Matrices.toArray(c))); :}
+          | ADJUNTA AP consec:c CP
+                {:
+                    double [][] aux1 = Matrices.toArray(c);
+                    if (Matrices.filas(aux1) != Matrices.columnas(aux1)) {
+                        System.out.println(Matrices.ERROR_ADJUNTA);
+                    } else {
+                        RESULT = Matrices.toArrayList(Matrices.adjunta(aux1));
+                    }
+                :}
+          | IDENT:id
+                {: 
+                    double [][] aux = TablaSimbolos.buscar(id);
+                    if (aux == null) {
+                        System.out.println(TablaSimbolos.ERROR_NOEXISTE);
+                    } else {
+                        RESULT = Matrices.toArrayList(TablaSimbolos.buscar(id));
+                    }
+                :}
+          ;
+
+interior ::= fila:f
+            {:
+                if (RESULT == null) {
+                    RESULT = new ArrayList<>();
+                    RESULT.add(f);
+                } else {
+                    RESULT.add(f);
+                }
+            :}
+         | fila:f PYC interior:i    
+            {: 
+                if (RESULT == null) {
+                    RESULT = new ArrayList<>();
+                    RESULT.add(f);
+                    RESULT.addAll(i);
+                } else {
+                    RESULT.add(f);
+                    RESULT.addAll(i);
+                }
+            :}
+         ;
+
+fila ::= NUMERO:n
+            {:
+                if (RESULT == null) {
+                    RESULT = new ArrayList<>();
+                    RESULT.add(n);
+                } else {
+                    RESULT.add(n);
+                }
+            :}
+      | NUMERO:n COMA fila:f
+            {:
+                if (RESULT == null) {
+                    RESULT = new ArrayList<>();
+                    RESULT.add(n);
+                    RESULT.addAll(f);
+                } else {
+                    RESULT.add(n);
+                    RESULT.addAll(f);
+                }
+            :}
+      ;
+
+interiorJava ::= ALL fila:f CLL
+                    {:
+                        if (RESULT == null) {
+                            RESULT = new ArrayList<>();
+                            RESULT.add(f);
+                        } else {
+                            RESULT.add(f);
+                        }
+                    :}
+             | ALL fila:f CLL COMA interiorJava:iJ
+                    {:
+                        if (RESULT == null) {
+                            RESULT = new ArrayList<>();
+                            RESULT.add(f);
+                            RESULT.addAll(iJ);
+                        } else {
+                            RESULT.add(f);
+                            RESULT.addAll(iJ);
+                        }
+                    :}
+             ;

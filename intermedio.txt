@@ -1,0 +1,10 @@
+	i = 0;
+E0:
+	if (i < 10) goto E1;
+	goto E2;
+E1:
+	print i;
+	$v0 = i + 1;
+	i = $v0;
+	goto E0;
+E2:
